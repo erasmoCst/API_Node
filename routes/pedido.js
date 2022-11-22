@@ -13,7 +13,11 @@ router.post("/", async function (req, res) {
     const result = await criar(req.body);
 
     res.send(result);
-  } catch (error) {}
+  } catch (error) {
+    res.status(500).send({
+        mensagem: error.message,
+    });
+  }
 });
 
 router.put("/:id", function (req, res) {
