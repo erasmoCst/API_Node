@@ -1,6 +1,8 @@
 const { Transaction } = require("sequelize");
 const {
+  cliente,
   pedido,
+  produto,
   produto_pedido,
   endereco_pedido,
   connection,
@@ -18,8 +20,7 @@ const criar = async (
 ) => {
   transacao = await connection.transaction(); //transacition(): Metodo do SEQUELIZE que inicia a transacao
 
-  try 
-  {
+  try {
     const pedidoCriado = await pedido.create(
       {
         clienteId,
@@ -29,16 +30,92 @@ const criar = async (
       { transaction: transacao }
     );
 
+    for (const item of produtos) {
+      await produto_pedido.create(
+        {
+          pedidoId: pedidoCriado.id,
+          produtoId: item.id,
+          quantidade: item.quantidade,
+          valorTotal: item.valorTotal,
+        },
+        { transaction: transacao }
+      );
+    }
+
+    enderecoEntrega["pedidoId"] = pedidoCriado.id;
+    //
+
+    await endereco_pedido.create(enderecoEntrega, {
+      transaction: transacao,
+    });
+
     await transacao.commit();
 
     return pedidoCriado;
-  } 
-
-  catch (error) 
-  {
+  } catch (error) {
     await transacao.rollback();
     throw error; //Envia o 'error', para o try/catch da rota
   }
 };
 
-module.exports = { criar };
+const buscarPorId = async (id) => {
+  try {
+    const options = {
+      include: [
+        {
+          model: cliente,
+          as: "cliente",
+        },
+        {
+          model: produto_pedido,
+          as: "produto_pedidos",
+          include: [
+            {
+              model: produto,
+              as: "produto",
+            },
+          ],
+        },
+      ],
+    };
+
+    return id
+      ? await pedido.findByPk(id, options)
+      : await pedido.findAll(options);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+const remover = async (id) => {
+  transacao = await connection.transaction();
+
+  try {
+    await endereco_pedido.destroy({
+      where: {
+        pedidoId: id,
+      },
+      transaction: transacao,
+    });
+    await produto_pedido.destroy({
+      where: {
+        pedidoId: id,
+      },
+      transaction: transacao,
+    });
+    await pedido.destroy({
+      where: {
+        id,
+      },
+      transaction: transacao,
+    });
+
+    await transacao.commit();
+  } catch (error) {
+    await transacao.rollback();
+    throw error;
+  }
+};
+
+module.exports = { criar, buscarPorId, remover };
