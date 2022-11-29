@@ -1,6 +1,9 @@
 const { cliente } = require("../models");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt")
+const { palavraChave } = require("../config/token.json");
 
-const create = async ({ nome, email, senha, cpf }) => {
+const criar = async ({ nome, email, senha, cpf }) => {
   const [result, isNewRecord] = await cliente.findOrCreate({
     defaults: {
       nome,
@@ -43,15 +46,29 @@ const remover = async (id) => {
 };
 
 const buscar = async (id = null) => {
-  const atributos = ["id", "nome", "email", "cpf"];
+  //const atributos = ["id", "nome", "email", "cpf"];
   if (id) {
-    return await cliente.findByPk(id, {
-      atributos,
-    });
+    return await cliente.findByPk(id);
   }
-  return await cliente.findAll({
-    atributos,
-  });
+  return await cliente.findAll();
 };
 
-module.exports = { create, atualizar, remover, buscar };
+const login = async (email, senha) => {
+  try {
+    const result = await cliente.scope("login").findOne({
+      where: {
+        email,
+      },
+    });
+
+    const senhaValida = bcrypt.compare(senha, result.senha);
+    if (!senhaValida) {
+      return false;
+    }
+    return jwt.sign({ id: result.id }, palavraChave, { expiresIn: "24h" });
+  } catch (error) {
+    throw error;
+  }
+};
+
+module.exports = { criar, atualizar, remover, buscar, login };

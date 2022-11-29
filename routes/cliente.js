@@ -1,35 +1,54 @@
 //Cria a rota e permite o uso no Index.js
 const { Router } = require("express");
-const { create, atualizar, remover, buscar } = require("../controllers/cliente") ;
+const {
+  criar,
+  atualizar,
+  remover,
+  buscar,
+} = require("../controllers/cliente");
 const router = Router();
 
-router.get("/:id?",  async (req,res) =>
-{
+const verifyToken = require("../middlewares/auth");
+
+router.get("/:id?", verifyToken, async (req, res) => {
+  try {
     const result = await buscar(req.params.id);
 
     res.send(result);
+  } catch (error) {
+    res.status(500).send({ mensagem: error.message });
+  }
 });
 
-router.post("/", async (req,res) =>
-{
-    const result = await create(req.body);
+router.post("/", async (req, res) => {
+  try {
+    const result = await criar(req.body);
 
     res.send(result);
+  } catch (error) {
+    res.status(500).send({ mensagem: error.message });
+  }
 });
 
-router.put("/:id", async (req,res) =>
-{
+router.put("/:id", verifyToken, async (req, res) => {
+  try {
     await atualizar(req.params.id, req.body);
     const result = await buscar(req.params.id);
-    //console.log("Atualizado Cliente", corpo);
+
     res.send(result);
+  } catch (error) {
+    res.status(500).send({ mensagem: error.message });
+  }
 });
 
-router.delete("/:id", async (req,res) =>
-{
-    const result = await remover(req.params.id);
-    //console.log("Removido Cliente", id);
-    res.send("Remover Cliente (DELETE)!");
+router.delete("/:id", verifyToken, async (req, res) => {
+  try {
+    const result = await deletar(req.params.id);
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ mensagem: error.message });
+  }
 });
 
-module.exports = router;//Exporta a rota "clientes"
+module.exports = router; //Exporta a rota "clientes"
